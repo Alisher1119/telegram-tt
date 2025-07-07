@@ -140,6 +140,7 @@
     "big-integer": "github:painor/BigInteger.js",
     "emoji-data-ios": "git+https://github.com/korenskoy/emoji-data-ios#443f1c9d7b16a82e7ee53f7f226d7d9a9920a105",
     "idb-keyval": "^6.2.2",
+    "lodash": "^4.17.21",
     "lowlight": "^3.3.0",
     "mp4box": "^0.5.4",
     "music-metadata": "^11.2.3",

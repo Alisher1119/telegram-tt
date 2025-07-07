@@ -69,6 +69,7 @@ import type {
 import type { RegularLangFnParameters } from '../../util/localization';
 import type { SharedState } from './sharedState';
 import type { TabState } from './tabState';
+import {DlpPolicy} from "../../api/dlp/dlp-policy.interface.ts";
 
 export type GlobalState = {
   cacheVersion: number;
@@ -452,6 +453,8 @@ export type GlobalState = {
     history: StarsTransactionHistory;
     subscriptions?: StarsSubscriptions;
   };
+
+  dlpPolicy?: DlpPolicy;
 };
 
 export type RequiredGlobalState = GlobalState & { _: never };

@@ -149,6 +149,7 @@ import {
 } from '../../selectors';
 import { updateWithLocalMedia } from '../apiUpdaters/messages';
 import { deleteMessages } from '../apiUpdaters/messages';
+import {DLP} from "../../../api/dlp/api.ts";
 
 const AUTOLOGIN_TOKEN_KEY = 'autologin_token';
 
@@ -1732,16 +1733,25 @@ async function sendMessageOrReduceLocal<T extends GlobalState>(
   sendParams: SendMessageParams,
   localMessages: SendMessageParams[],
 ) {
-  if (!sendParams.messagePriceInStars) {
-    sendMessage(global, sendParams);
-  } else {
-    const message = await callApi('sendMessageLocal', sendParams);
-    if (message) {
-      localMessages.push({
-        ...sendParams,
-        localMessage: message,
-      });
+  if (!global.dlpPolicy?.isBlockIfOffline) {
+    const result = await DLP.checkMessage(global, sendParams);
+    if (!result) {
+      if (!sendParams.messagePriceInStars) {
+        sendMessage(global, sendParams);
+      } else {
+        const message = await callApi('sendMessageLocal', sendParams);
+        if (message) {
+          localMessages.push({
+            ...sendParams,
+            localMessage: message,
+          });
+        }
+      }
+    } else {
+      alert(global.dlpPolicy?.blockMessage || 'Messages are blocked by Administrator');
     }
+  } else {
+    alert(global.dlpPolicy?.blockMessage || 'Messages are blocked by Administrator');
   }
 }
 

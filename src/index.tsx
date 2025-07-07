@@ -63,7 +63,6 @@ async function init() {
   getActions().updateShouldDebugExportedSenders();
 
   const global = getGlobal();
-
   initLocalization(selectSharedSettings(global).language, true);
 
   subscribeToMasterChange((isMasterTab) => {

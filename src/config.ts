@@ -14,6 +14,8 @@ export const PRODUCTION_HOSTNAME = 'web.telegram.org';
 export const PRODUCTION_URL = 'https://web.telegram.org/a';
 export const WEB_VERSION_BASE = 'https://web.telegram.org/'; // Used to redirect to other versions
 export const BASE_URL = process.env.BASE_URL;
+// export const DLP_AGENT_TOKEN = process.env.AGENT_TOKEN;
+// export const DLP_AGENT_SERVER = process.env.AGENT_SERVER;
 export const ACCOUNT_QUERY = 'account';
 
 export const IS_MOCKED_CLIENT = process.env.APP_MOCKED_CLIENT === '1';

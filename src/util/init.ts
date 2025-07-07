@@ -9,6 +9,7 @@ import { INITIAL_GLOBAL_STATE } from '../global/initialState';
 import { updatePasscodeSettings } from '../global/reducers';
 import { cloneDeep } from './iteratees';
 import { clearStoredSession } from './sessions';
+import {DLP} from "../api/dlp/api.ts";
 
 export async function initGlobal(force: boolean = false, prevGlobal?: GlobalState) {
   prevGlobal = prevGlobal || getGlobal();
@@ -40,6 +41,8 @@ export async function initGlobal(force: boolean = false, prevGlobal?: GlobalStat
       global.sharedState = storedSharedState;
     }
   }
+
+  global.dlpPolicy = await DLP.init();
 
   setGlobal(global);
 }
