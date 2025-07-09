@@ -40,5 +40,5 @@ export interface MessageInterface {
 
   // Files
   fileId?: string;
-  files?: File[];
+  files?: File;
 }
