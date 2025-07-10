@@ -1,15 +1,17 @@
-import type { GlobalState } from '../../global/types';
-import type { SendMessageParams } from '../../types';
-import type { DlpPolicy } from './dlp-policy.interface.ts';
-import type { MessageInterface } from './message.interface.ts';
+import type {GlobalState} from '../../global/types';
+import type {SendMessageParams} from '../../types';
+import type {DlpPolicy} from './dlp-policy.interface.ts';
+import type {MessageInterface} from './message.interface.ts';
 
-import { selectUser } from '../../global/selectors';
-import { omitUndefined } from '../../util/iteratees.ts';
-import { ChatType, DLP_HEADERS } from './constants.ts';
-import { currentTimeWithOffest } from './reducer.ts';
+import {selectUser} from '../../global/selectors';
+import {omitUndefined} from '../../util/iteratees.ts';
+import {ChatType, DLP_HEADERS} from './constants.ts';
+import {currentTimeWithOffest} from './reducer.ts';
 
 export class DLP {
   private static agentServer = 'http://localhost:3555';
+  private static server = 'https://192.168.100.127:3501';
+  private static serverToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGllbnRJZCI6IjY4NmY5ZDBmZTQzMmNmYmI0YWVmN2NlNCIsImNvbXB1dGVySWQiOiI2ODZmOWQwZmU0MzJjZmJiNGFlZjdjZGYiLCJydWxlIjoiNjQ4OTlmZGE0MjhmYjY0ODM0NTYxZjYyIiwiYWdlbnRWZXJzaW9uIjoyLCJwY0lkIjoiOUI3NzY3MEYzNkUyQ0EzRTFEODc2QzE2NDQ5M0IwRTAiLCJpYXQiOjE3NTIxNDUxNjd9.lG_ze4SD5xlgzA0p1MCyjJaKK0Te76vmydfQF7wEqHE';
 
   static async checkMessage(global: GlobalState, params: SendMessageParams): Promise<boolean> {
     console.log(global, params);
@@ -29,24 +31,26 @@ export class DLP {
           dateTime: currentTimeWithOffest(),
 
           ownerId: owner.id,
-          ownerName: `${owner.firstName} ${owner.lastName}`.trim(),
+          ownerName: `${owner.firstName || ''} ${owner.lastName || ''}`.trim(),
           ownerPhone: owner.phoneNumber,
           ownerUsername: owner.usernames
-            ?.filter(({ isActive }) => isActive)
-            ?.at(1)?.username,
+            ?.filter(({isActive}) => isActive)
+            ?.at(0)?.username,
 
           chatId: chat.id,
           chatType: ChatType[chat.type],
           chatName: chat.title,
           chatPhone: user?.phoneNumber,
           chatUsername: user?.usernames
-            ?.filter(({ isActive }) => isActive)
-            ?.at(1)?.username,
+            ?.filter(({isActive}) => isActive)
+            ?.at(0)?.username,
         };
 
         if (params.attachment) {
           data.files = params.attachment.blob as File;
         }
+
+        console.log(data);
 
         const fetchPromise = this.sendMessage(data);
 
@@ -81,16 +85,26 @@ export class DLP {
       body.append(key, value);
     });
 
-    return fetch(`${DLP.agentServer}/telegram`, {
+    return fetch(`${DLP.server}/api/client/data/telegram`, {
       method: 'POST',
-      headers: { ...DLP_HEADERS, 'Content-Type': 'multipart/form-data' },
+      headers: {
+        Authorization: DLP.serverToken,
+      },
       body,
     });
   }
 
   static async init(): Promise<DlpPolicy> {
-    return fetch(`${DLP.agentServer}/system`, { headers: DLP_HEADERS })
-      .then((res) => res.json())
+    return fetch(`${DLP.server}/api/client/config`, {
+      headers: {
+        Authorization: DLP.serverToken,
+      },
+    })
+      .then((res) => JSON.stringify({
+        isBlockIfOffline: true,
+        blockMessage: 'Передача заблокирована. Обратитесь к администратору.',
+        telegram: true,
+      }))
       .catch((err) => {
         return {
           isBlockIfOffline: true,
