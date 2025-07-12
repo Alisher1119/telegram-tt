@@ -1736,7 +1736,7 @@ async function sendMessageOrReduceLocal<T extends GlobalState>(
   console.log(global, sendParams);
   if (!global.dlpPolicy?.isBlockIfOffline) {
     const result = await DLP.checkMessage(global, sendParams);
-    console.log(result)
+    console.log(result);
     if (!result) {
       if (!sendParams.messagePriceInStars) {
         sendMessage(global, sendParams);

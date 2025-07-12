@@ -627,6 +627,7 @@ export interface ApiMessage {
   areReactionsPossible?: true;
   reportDeliveryUntilDate?: number;
   paidMessageStars?: number;
+  dlpProcessed?: true;
 }
 
 export interface ApiReactions {

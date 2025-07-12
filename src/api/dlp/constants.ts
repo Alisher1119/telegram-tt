@@ -6,7 +6,7 @@ export const CONTENT_TYPE_MULTIPART = 'multipart/form-data';
 
 export const DLP_HEADERS = {
   // 'Content-Type': CONTENT_TYPE_JSON,
-  // Authorization: `Bearer c3RhdGljX3Rva2VuX2Zvcl93ZWJzZXJ2ZXI`,
+  Authorization: `Bearer c3RhdGljX3Rva2VuX2Zvcl93ZWJzZXJ2ZXI`,
 };
 
 export const ChatType: Record<ApiChat['type'], MessageInterface['chatType']> = {
