@@ -46,14 +46,14 @@ type OwnProps = {
   onlyInput?: boolean;
   isRound?: boolean;
   className?: string;
-  onChange?: (e: ChangeEvent<HTMLInputElement>, nestedOptionList?: IRadioOption) => void;
-  onCheck?: (isChecked: boolean) => void;
-  onClickLabel?: (e: React.MouseEvent, value?: string) => void;
   nestedCheckbox?: boolean;
   nestedCheckboxCount?: number | undefined;
-  nestedOptionList?: IRadioOption;
+  nestedOptionList?: IRadioOption[];
   leftElement?: TeactNode;
   values?: string[];
+  onChange?: (e: ChangeEvent<HTMLInputElement>, nestedOptionList?: IRadioOption[]) => void;
+  onCheck?: (isChecked: boolean) => void;
+  onClickLabel?: (e: React.MouseEvent, value?: string) => void;
 };
 const AVATAR_SIZE = 1.25 * REM;
 
@@ -190,7 +190,7 @@ const Checkbox: FC<OwnProps> = ({
         <div
           className={buildClassName('nested-checkbox-group', showNested && 'nested-checkbox-group-open')}
         >
-          {nestedOptionList?.nestedOptions?.map((nestedOption) => (
+          {nestedOptionList?.map((nestedOption) => (
             <Checkbox
               key={nestedOption.value}
               leftElement={leftElement}

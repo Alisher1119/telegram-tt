@@ -1,3 +1,5 @@
+dist/*
+dist.zip
 dist/build-stats.json
 node_modules
 .cache
@@ -12,4 +14,3 @@ dev/perf/screenshot*
 .github/workflows/*
 !.github/workflows/package-and-publish.yml
 
-dist*
