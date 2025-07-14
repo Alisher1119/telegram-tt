@@ -1,15 +1,27 @@
-import type {FC} from '../../lib/teact/teact';
-import {beginHeavyAnimation, memo, useEffect, useMemo, useRef,} from '../../lib/teact/teact';
-import {addExtraClass, removeExtraClass} from '../../lib/teact/teact-dom';
-import {getActions, getGlobal, withGlobal} from '../../global';
+import type { FC } from '../../lib/teact/teact';
+import {
+  beginHeavyAnimation, memo, useEffect, useMemo, useRef,
+} from '../../lib/teact/teact';
+import { addExtraClass, removeExtraClass } from '../../lib/teact/teact-dom';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
-import type {ApiChatFullInfo, ApiMessage, ApiRestrictionReason, ApiTopic,} from '../../api/types';
-import {MAIN_THREAD_ID} from '../../api/types';
-import type {OnIntersectPinnedMessage} from './hooks/usePinnedMessage';
-import {LoadMoreDirection, type MessageListType, type ThreadId} from '../../types';
+import type {
+  ApiChatFullInfo,
+  ApiMessage,
+  ApiRestrictionReason,
+  ApiTopic,
+} from '../../api/types';
+import type { OnIntersectPinnedMessage } from './hooks/usePinnedMessage';
+import { MAIN_THREAD_ID } from '../../api/types';
+import { LoadMoreDirection, type MessageListType, type ThreadId } from '../../types';
 
-import {ANIMATION_END_DELAY, ANONYMOUS_USER_ID, MESSAGE_LIST_SLICE, SERVICE_NOTIFICATIONS_USER_ID,} from '../../config';
-import {forceMeasure, requestForcedReflow, requestMeasure} from '../../lib/fasterdom/fasterdom';
+import {
+  ANIMATION_END_DELAY,
+  ANONYMOUS_USER_ID,
+  MESSAGE_LIST_SLICE,
+  SERVICE_NOTIFICATIONS_USER_ID,
+} from '../../config';
+import { forceMeasure, requestForcedReflow, requestMeasure } from '../../lib/fasterdom/fasterdom';
 import {
   getIsSavedDialog,
   getMessageHtmlId,
@@ -46,29 +58,27 @@ import {
   selectTranslationLanguage,
   selectUserFullInfo,
 } from '../../global/selectors';
-import animateScroll, {isAnimatingScroll, restartCurrentScrollAnimation} from '../../util/animateScroll';
+import animateScroll, { isAnimatingScroll, restartCurrentScrollAnimation } from '../../util/animateScroll';
 import buildClassName from '../../util/buildClassName';
-import {isUserId} from '../../util/entities/ids';
-import {orderBy} from '../../util/iteratees';
-import {isLocalMessageId} from '../../util/keys/messageKey';
+import { isUserId } from '../../util/entities/ids';
+import { orderBy } from '../../util/iteratees';
+import { isLocalMessageId } from '../../util/keys/messageKey';
 import resetScroll from '../../util/resetScroll';
-import {debounce, onTickEnd} from '../../util/schedulers';
+import { debounce, onTickEnd } from '../../util/schedulers';
 import getOffsetToContainer from '../../util/visibility/getOffsetToContainer';
-import {groupMessages} from './helpers/groupMessages';
-import {preventMessageInputBlur} from './helpers/preventMessageInputBlur';
+import { groupMessages } from './helpers/groupMessages';
+import { preventMessageInputBlur } from './helpers/preventMessageInputBlur';
 
 import useInterval from '../../hooks/schedulers/useInterval';
 import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
 import useLastCallback from '../../hooks/useLastCallback';
 import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
 import useNativeCopySelectedMessages from '../../hooks/useNativeCopySelectedMessages';
-import {useStateRef} from '../../hooks/useStateRef';
+import { useStateRef } from '../../hooks/useStateRef';
 import useSyncEffect from '../../hooks/useSyncEffect';
-import {isBackgroundModeActive} from '../../hooks/window/useBackgroundMode';
+import { isBackgroundModeActive } from '../../hooks/window/useBackgroundMode';
 import useContainerHeight from './hooks/useContainerHeight';
 import useStickyDates from './hooks/useStickyDates';
-
-import isEqual from 'lodash/isEqual';
 
 import Loading from '../ui/Loading';
 import ContactGreeting from './ContactGreeting';
@@ -78,7 +88,6 @@ import NoMessages from './NoMessages';
 import RequirementToContactMessage from './RequirementToContactMessage';
 
 import './MessageList.scss';
-import {updateMessageStore} from "../../global/reducers";
 
 type OwnProps = {
   chatId: string;
@@ -154,60 +163,60 @@ const UNREAD_DIVIDER_CLASS = 'unread-divider';
 const runDebouncedForScroll = debounce((cb) => cb(), SCROLL_DEBOUNCE, false);
 
 const MessageList: FC<OwnProps & StateProps> = ({
-                                                  chatId,
-                                                  threadId,
-                                                  type,
-                                                  isChatLoaded,
-                                                  isForum,
-                                                  isChannelChat,
-                                                  isGroupChat,
-                                                  isChannelWithAvatars,
-                                                  canPost,
-                                                  isSynced,
-                                                  isChatMonoforum,
-                                                  isReady,
-                                                  isChatWithSelf,
-                                                  isSystemBotChat,
-                                                  isAnonymousForwards,
-                                                  isCreator,
-                                                  isBot,
-                                                  isNonContact,
-                                                  nameChangeDate,
-                                                  photoChangeDate,
-                                                  messageIds,
-                                                  messagesById,
-                                                  firstUnreadId,
-                                                  isComments,
-                                                  isViewportNewest,
-                                                  isRestricted,
-                                                  restrictionReason,
-                                                  isEmptyThread,
-                                                  focusingId,
-                                                  isSelectModeActive,
-                                                  lastMessage,
-                                                  hasLinkedChat,
-                                                  withBottomShift,
-                                                  withDefaultBg,
-                                                  topic,
-                                                  noMessageSendingAnimation,
-                                                  isServiceNotificationsChat,
-                                                  currentUserId,
-                                                  isContactRequirePremium,
-                                                  paidMessagesStars,
-                                                  areAdsEnabled,
-                                                  channelJoinInfo,
-                                                  isChatProtected,
-                                                  isAccountFrozen,
-                                                  hasCustomGreeting,
-                                                  monoforumChannelId,
-                                                  isAppConfigLoaded,
-                                                  canTranslate,
-                                                  translationLanguage,
-                                                  shouldAutoTranslate,
-                                                  onIntersectPinnedMessage,
-                                                  onScrollDownToggle,
-                                                  onNotchToggle,
-                                                }) => {
+  chatId,
+  threadId,
+  type,
+  isChatLoaded,
+  isForum,
+  isChannelChat,
+  isGroupChat,
+  isChannelWithAvatars,
+  canPost,
+  isChatMonoforum,
+  isSynced,
+  isReady,
+  isChatWithSelf,
+  isSystemBotChat,
+  isAnonymousForwards,
+  isCreator,
+  isBot,
+  isNonContact,
+  nameChangeDate,
+  photoChangeDate,
+  messageIds,
+  messagesById,
+  firstUnreadId,
+  isComments,
+  isViewportNewest,
+  isRestricted,
+  restrictionReason,
+  isEmptyThread,
+  focusingId,
+  isSelectModeActive,
+  lastMessage,
+  hasLinkedChat,
+  withBottomShift,
+  withDefaultBg,
+  topic,
+  noMessageSendingAnimation,
+  isServiceNotificationsChat,
+  currentUserId,
+  isContactRequirePremium,
+  paidMessagesStars,
+  areAdsEnabled,
+  channelJoinInfo,
+  isChatProtected,
+  isAccountFrozen,
+  hasCustomGreeting,
+  monoforumChannelId,
+  isAppConfigLoaded,
+  canTranslate,
+  translationLanguage,
+  shouldAutoTranslate,
+  onIntersectPinnedMessage,
+  onScrollDownToggle,
+  onNotchToggle,
+}) => {
   const {
     loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
     loadMessageViews, loadPeerStoriesByIds, loadFactChecks, requestChatTranslation,
@@ -258,7 +267,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
   useEffect(() => {
     const canHaveAds = isChannelChat || isBot;
     if (areAdsEnabled && canHaveAds && isSynced && isReady && isAppConfigLoaded) {
-      loadSponsoredMessages({peerId: chatId});
+      loadSponsoredMessages({ peerId: chatId });
     }
   }, [chatId, isSynced, isReady, isChannelChat, isBot, areAdsEnabled, isAppConfigLoaded]);
 
@@ -276,7 +285,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
   // Enable auto translation for the chat if it's available
   useEffect(() => {
     if (!shouldAutoTranslate || !canTranslate) return;
-    requestChatTranslation({chatId, toLanguageCode: translationLanguage});
+    requestChatTranslation({ chatId, toLanguageCode: translationLanguage });
   }, [shouldAutoTranslate, canTranslate, translationLanguage, chatId]);
 
   useNativeCopySelectedMessages(copyMessagesByIds);
@@ -295,11 +304,11 @@ const MessageList: FC<OwnProps & StateProps> = ({
         return;
       }
 
-      const {shouldAppendJoinMessage, shouldAppendJoinMessageAfterCurrent} = (() => {
+      const { shouldAppendJoinMessage, shouldAppendJoinMessageAfterCurrent } = (() => {
         if (!channelJoinInfo || type !== 'thread') return undefined;
         if (prevMessage
           && prevMessage.date < channelJoinInfo.joinedDate && channelJoinInfo.joinedDate <= message.date) {
-          return {shouldAppendJoinMessage: true, shouldAppendJoinMessageAfterCurrent: false};
+          return { shouldAppendJoinMessage: true, shouldAppendJoinMessageAfterCurrent: false };
         }
 
         if (index === arr.length - 1 && message.date < channelJoinInfo.joinedDate) {
@@ -369,7 +378,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
     if (!ids.length) return;
 
-    loadMessageReactions({chatId, ids});
+    loadMessageReactions({ chatId, ids });
   }, MESSAGE_REACTIONS_POLLING_INTERVAL);
 
   useInterval(() => {
@@ -381,7 +390,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     if (!storyDataList.length) return;
 
     const storiesByPeerIds = storyDataList.reduce((acc, storyData) => {
-      const {peerId, id} = storyData;
+      const { peerId, id } = storyData;
       if (!acc[peerId]) {
         acc[peerId] = [];
       }
@@ -390,7 +399,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     }, {} as Record<string, number[]>);
 
     Object.entries(storiesByPeerIds).forEach(([peerId, storyIds]) => {
-      loadPeerStoriesByIds({peerId, storyIds});
+      loadPeerStoriesByIds({ peerId, storyIds });
     });
   }, MESSAGE_STORY_POLLING_INTERVAL);
 
@@ -404,7 +413,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
     if (!ids.length) return;
 
-    loadMessageViews({chatId, ids});
+    loadMessageViews({ chatId, ids });
   }, MESSAGE_COMMENTS_POLLING_INTERVAL, true);
 
   useInterval(() => {
@@ -415,7 +424,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
     if (!ids.length) return;
 
-    loadFactChecks({chatId, ids});
+    loadFactChecks({ chatId, ids });
   }, MESSAGE_FACT_CHECK_UPDATE_INTERVAL);
 
   const loadMoreAround = useMemo(() => {
@@ -423,11 +432,11 @@ const MessageList: FC<OwnProps & StateProps> = ({
       return undefined;
     }
 
-    return debounce(() => loadViewportMessages({direction: LoadMoreDirection.Around}), 1000, true, false);
+    return debounce(() => loadViewportMessages({ direction: LoadMoreDirection.Around }), 1000, true, false);
     // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps
   }, [loadViewportMessages, messageIds]);
 
-  const {isScrolled, updateStickyDates} = useStickyDates();
+  const { isScrolled, updateStickyDates } = useStickyDates();
 
   const handleScroll = useLastCallback(() => {
     if (isScrollTopJustUpdatedRef.current) {
@@ -449,7 +458,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
       const isFocusing = Boolean(selectTabState(global).focusedMessage?.chatId);
       if (!isFocusing) {
-        onIntersectPinnedMessage({shouldCancelWaiting: true});
+        onIntersectPinnedMessage({ shouldCancelWaiting: true });
       }
 
       if (!container.parentElement) {
@@ -459,7 +468,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
       scrollOffsetRef.current = container.scrollHeight - container.scrollTop;
 
       if (type === 'thread') {
-        setScrollOffset({chatId, threadId, scrollOffset: scrollOffsetRef.current});
+        setScrollOffset({ chatId, threadId, scrollOffset: scrollOffsetRef.current });
       }
     });
   });
@@ -575,7 +584,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     }
 
     requestForcedReflow(() => {
-      const {scrollTop, scrollHeight, offsetHeight} = container;
+      const { scrollTop, scrollHeight, offsetHeight } = container;
       const scrollOffset = scrollOffsetRef.current;
 
       let bottomOffset = scrollOffset - (prevContainerHeight || offsetHeight);
@@ -714,13 +723,13 @@ const MessageList: FC<OwnProps & StateProps> = ({
           </span>
         </div>
       ) : paidMessagesStars && !hasMessages && !hasCustomGreeting ? (
-        <RequirementToContactMessage paidMessagesStars={paidMessagesStars} peerId={monoforumChannelId || chatId}/>
+        <RequirementToContactMessage paidMessagesStars={paidMessagesStars} peerId={monoforumChannelId || chatId} />
       ) : isContactRequirePremium && !hasMessages ? (
-        <RequirementToContactMessage peerId={chatId}/>
+        <RequirementToContactMessage peerId={chatId} />
       ) : (isBot || isNonContact) && !hasMessages ? (
-        <MessageListAccountInfo chatId={chatId} hasMessages={hasMessages}/>
+        <MessageListAccountInfo chatId={chatId} hasMessages={hasMessages} />
       ) : shouldRenderGreeting ? (
-        <ContactGreeting key={chatId} userId={chatId}/>
+        <ContactGreeting key={chatId} userId={chatId} />
       ) : messageIds && (!messageGroups || isGroupChatJustCreated || isEmptyTopic) ? (
         <NoMessages
           chatId={chatId}
@@ -764,19 +773,19 @@ const MessageList: FC<OwnProps & StateProps> = ({
           canPost={canPost}
         />
       ) : (
-        <Loading color="white" backgroundColor="dark"/>
+        <Loading color="white" backgroundColor="dark" />
       )}
     </div>
   );
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, {chatId, threadId, type}): StateProps => {
+  (global, { chatId, threadId, type }): StateProps => {
     const currentUserId = global.currentUserId!;
     const chat = selectChat(global, chatId);
     const userFullInfo = selectUserFullInfo(global, chatId);
     if (!chat) {
-      return {currentUserId};
+      return { currentUserId };
     }
 
     const messageIds = selectCurrentMessageIds(global, chatId, threadId, type);
@@ -784,38 +793,16 @@ export default memo(withGlobal<OwnProps>(
       ? selectChatScheduledMessages(global, chatId)
       : selectChatMessages(global, chatId);
 
-    const processedMessagesById: Record<number, ApiMessage> = Object.fromEntries(Object.values(messagesById)
-      .filter((message) => !message.dlpProcessed)
-      .map((message) => {
-        return [message.id, {
-          ...message,
-          dlpProcessed: true,
-        }];
-      }),
-    );
-
-    console.log(processedMessagesById, messagesById, global);
-
-    if (JSON.stringify(messagesById) !== JSON.stringify(processedMessagesById)) {
-      console.log('[DLP] updating message store');
-      updateMessageStore(global, chatId, {
-        byId: {
-          ...messagesById,
-          ...processedMessagesById,
-        },
-      });
-    }
-
     const isSavedDialog = getIsSavedDialog(chatId, threadId, currentUserId);
 
     if (
       threadId !== MAIN_THREAD_ID && !isSavedDialog && !chat?.isForum
       && !(messagesById && threadId && messagesById[Number(threadId)])
     ) {
-      return {currentUserId};
+      return { currentUserId };
     }
 
-    const {isRestricted, restrictionReason} = chat;
+    const { isRestricted, restrictionReason } = chat;
     const lastMessage = selectChatLastMessage(global, chatId, isSavedDialog ? 'saved' : 'all');
     const focusingId = selectFocusedMessageId(global, chatId);
 
@@ -878,7 +865,7 @@ export default memo(withGlobal<OwnProps>(
       isEmptyThread,
       currentUserId,
       isChatProtected: selectIsChatProtected(global, chatId),
-      ...(withLastMessageWhenPreloading && {lastMessage}),
+      ...(withLastMessageWhenPreloading && { lastMessage }),
       isAccountFrozen,
       hasCustomGreeting,
       isAppConfigLoaded,

@@ -1,5 +1,5 @@
-import type { FC } from '../lib/teact/teact';
-import { useEffect, useLayoutEffect } from '../lib/teact/teact';
+import type { FC } from '@teact';
+import { useEffect, useLayoutEffect } from '@teact';
 import { withGlobal } from '../global';
 
 import type { GlobalState } from '../global/types';

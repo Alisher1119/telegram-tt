@@ -1,5 +1,5 @@
-import type { ElementRef, FC } from '../../lib/teact/teact';
-import { getIsHeavyAnimating, memo } from '../../lib/teact/teact';
+import type { ElementRef, FC } from '@teact';
+import { getIsHeavyAnimating, memo } from '@teact';
 import { getActions, getGlobal } from '../../global';
 
 import type { ApiMessage } from '../../api/types';
