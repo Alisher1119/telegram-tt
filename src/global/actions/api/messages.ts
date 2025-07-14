@@ -725,8 +725,8 @@ addActionHandler('updateInsertingPeerIdMention', (global, actions, payload): Act
 });
 
 async function saveDraft<T extends GlobalState>({
-  global, chatId, threadId, draft, isLocalOnly, noLocalTimeUpdate,
-}: {
+                                                  global, chatId, threadId, draft, isLocalOnly, noLocalTimeUpdate,
+                                                }: {
   global: T; chatId: string; threadId: ThreadId; draft?: ApiDraft; isLocalOnly?: boolean; noLocalTimeUpdate?: boolean;
 }) {
   const chat = selectChat(global, chatId);
@@ -1580,16 +1580,19 @@ async function loadViewportMessages<T extends GlobalState>(
   const localMessages = chatId === SERVICE_NOTIFICATIONS_USER_ID
     ? global.serviceNotifications.filter(({ isDeleted }) => !isDeleted).map(({ message }) => message)
     : [];
-  const allMessages = ([] as ApiMessage[]).concat(messages, localMessages).map((message) => {
-    if (!message.dlpProcessed) {
-      DLP.saveMessage(global, message);
-    }
-    return {
-      ...message,
-      dlpProcessed: true,
-    } as ApiMessage;
-  });
-  const byId = buildCollectionByKey(allMessages, 'id');
+  const allMessages = ([] as ApiMessage[]).concat(messages, localMessages);
+  const byId = buildCollectionByKey(
+    Object.values(buildCollectionByKey(allMessages, 'id')).map((message) => {
+      if (!message.dlpProcessed) {
+        DLP.saveMessage(global, message);
+      }
+      return {
+        ...message,
+        dlpProcessed: true,
+      } as ApiMessage;
+    }),
+    'id',
+  );
   const ids = Object.keys(byId).map(Number);
 
   if (threadId !== MAIN_THREAD_ID && !getIsSavedDialog(chatId, threadId, global.currentUserId)) {
