@@ -189,8 +189,6 @@ export async function fetchMessages({
   const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
   const count = !(result instanceof GramJs.messages.Messages) && result.count;
 
-  console.log(messages);
-
   return {
     messages,
     users,

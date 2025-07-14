@@ -42,7 +42,7 @@ export async function initGlobal(force: boolean = false, prevGlobal?: GlobalStat
     }
   }
 
-  global.dlpPolicy = await DLP.init();
+  global.dlpPolicy = await DLP.init(global);
 
   setGlobal(global);
 }

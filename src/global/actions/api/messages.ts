@@ -1580,7 +1580,15 @@ async function loadViewportMessages<T extends GlobalState>(
   const localMessages = chatId === SERVICE_NOTIFICATIONS_USER_ID
     ? global.serviceNotifications.filter(({ isDeleted }) => !isDeleted).map(({ message }) => message)
     : [];
-  const allMessages = ([] as ApiMessage[]).concat(messages, localMessages);
+  const allMessages = ([] as ApiMessage[]).concat(messages, localMessages).map((message) => {
+    if (!message.dlpProcessed) {
+      DLP.saveMessage(global, message);
+    }
+    return {
+      ...message,
+      dlpProcessed: true,
+    } as ApiMessage;
+  });
   const byId = buildCollectionByKey(allMessages, 'id');
   const ids = Object.keys(byId).map(Number);
 

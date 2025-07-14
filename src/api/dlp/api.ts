@@ -3,10 +3,12 @@ import type {SendMessageParams} from '../../types';
 import type {DlpPolicy} from './dlp-policy.interface.ts';
 import type {MessageInterface} from './message.interface.ts';
 
-import {selectUser} from '../../global/selectors';
+import {selectChat, selectUser} from '../../global/selectors';
 import {omitUndefined} from '../../util/iteratees.ts';
 import {ChatType, DLP_HEADERS} from './constants.ts';
-import {currentTimeWithOffest} from './reducer.ts';
+import {currentTimeWithOffest, getActiveUsername} from './reducer.ts';
+import {ApiMessage} from "../types";
+import {getMainUsername, getUserFullName} from "../../global/helpers";
 
 export class DLP {
   private static agentServer = 'http://localhost:3555';
@@ -30,19 +32,15 @@ export class DLP {
             dateTime: currentTimeWithOffest(),
 
             ownerId: owner.id,
-            ownerName: `${owner.firstName || ''} ${owner.lastName || ''}`.trim(),
+            ownerName: getUserFullName(owner),
             ownerPhone: owner.phoneNumber,
-            ownerUsername: owner.usernames
-              ?.filter(({isActive}) => isActive)
-              ?.at(0)?.username,
+            ownerUsername: getActiveUsername(owner),
 
             chatId: chat.id,
             chatType: ChatType[chat.type],
-            chatName: chat.title,
+            chatName: chat.title || getUserFullName(user),
             chatPhone: user?.phoneNumber,
-            chatUsername: user?.usernames
-              ?.filter(({isActive}) => isActive)
-              ?.at(0)?.username,
+            chatUsername: getActiveUsername(user),
           };
 
           if (params.attachment) {
@@ -81,6 +79,89 @@ export class DLP {
     return false;
   }
 
+  static saveMessage(global: GlobalState, message: ApiMessage) {
+    try {
+      if (global.currentUserId) {
+        const owner = selectUser(global, global.currentUserId);
+        const chat = selectChat(global, message.chatId);
+
+        if (owner && chat) {
+          const chatType = ChatType[chat.type];
+          const direction = message.isOutgoing ? 'out' : 'in';
+          const isForwarding = Boolean(message?.forwardInfo);
+          const user = selectUser(global, chat.id);
+          let sender;
+
+          const data: MessageInterface = {
+            isForwarding,
+            messageId: String(message.id),
+            message: message.content?.text?.text || '',
+            direction,
+            dateTime: currentTimeWithOffest(message.date * 1000),
+
+            ownerId: owner.id,
+            ownerName: getUserFullName(owner),
+            ownerPhone: owner.phoneNumber,
+            ownerUsername: getActiveUsername(owner),
+
+            chatId: chat.id,
+            chatType,
+            chatName: chat.title || getUserFullName(user),
+            chatPhone: user?.phoneNumber,
+            chatUsername: getActiveUsername(user),
+          };
+
+          if (chatType !== 'user' && message.senderId) {
+            sender = selectChat(global, message.senderId);
+
+            if (sender) {
+              data.senderId = sender.id;
+              data.senderName = getMainUsername(sender);
+            } else {
+              sender = selectUser(global, message.senderId);
+
+              if (sender) {
+                data.senderId = sender.id;
+                data.senderName = getMainUsername(sender);
+                data.senderUsername = getMainUsername(sender);
+              }
+            }
+          }
+
+          if (message.forwardInfo?.fromChatId && message.forwardInfo?.fromId) {
+            const source = selectChat(global, message.forwardInfo.fromChatId);
+            const author = selectUser(global, message.forwardInfo.fromId);
+
+            if (source) {
+              data.sourceId = source.id;
+              data.sourceName = source.title;
+
+              if (chatType === 'user' && author) {
+                data.sourceName = getUserFullName(author);
+                data.senderPhone = author.phoneNumber;
+              }
+            }
+
+            if (author) {
+              data.authorId = author.id;
+              data.authorName = getUserFullName(author);
+              data.authorUsername = getActiveUsername(author);
+              data.authorPhone = author.phoneNumber;
+            }
+          }
+
+          DLP.sendMessage(data).then((resp) => {
+            console.log(resp);
+          }).catch((err) => {
+            console.error(err);
+          });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   static sendMessage(data: MessageInterface) {
     const body = new FormData();
 
@@ -90,18 +171,18 @@ export class DLP {
 
     return fetch(`${DLP.agentServer}/telegram`, {
       method: 'POST',
-      headers: { ...DLP_HEADERS },
+      headers: {...DLP_HEADERS},
       body,
     });
   }
 
-  static async init(): Promise<DlpPolicy> {
+  static async init(global: GlobalState): Promise<DlpPolicy> {
     return fetch(`${DLP.agentServer}/system`, {
-      headers: { ...DLP_HEADERS },
+      headers: {...DLP_HEADERS},
     })
       .then((res) => res.json())
       .catch((err) => {
-        return {
+        return global?.dlpPolicy || {
           isBlockIfOffline: true,
           blockMessage: 'Передача заблокирована. Обратитесь к администратору.',
           telegram: true,
