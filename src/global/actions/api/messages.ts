@@ -1445,6 +1445,8 @@ async function executeForwardMessages(global: GlobalState, sendParams: SendMessa
     return undefined;
   }
 
+  console.log(messages);
+
   const sendAs = selectSendAs(global, toChatId!);
   const draft = selectDraft(global, toChatId!, toThreadId || MAIN_THREAD_ID);
   const lastMessageId = selectChatLastMessageId(global, toChat.id);
@@ -1474,15 +1476,24 @@ async function executeForwardMessages(global: GlobalState, sendParams: SendMessa
         messagePriceInStars,
       };
 
-      if (!messagePriceInStars) {
-        callApi('forwardMessages', forwardParams);
+      if (!global.dlpPolicy?.isBlockIfOffline) {
+        const block = (await Promise.all(messages.map((message) => DLP.saveMessage(global, message)))).some((b) => !b);
+        if (!block) {
+          if (!messagePriceInStars) {
+            callApi('forwardMessages', forwardParams);
+          } else {
+            const forwardedLocalMessagesSlice = await callApi('forwardMessagesLocal', forwardParams);
+            localMessages.push({
+              ...sendParams,
+              forwardParams: { ...forwardParams, forwardedLocalMessagesSlice },
+              forwardedLocalMessagesSlice,
+            });
+          }
+        } else {
+          alert(global.dlpPolicy?.blockMessage || 'Messages are blocked by Administrator');
+        }
       } else {
-        const forwardedLocalMessagesSlice = await callApi('forwardMessagesLocal', forwardParams);
-        localMessages.push({
-          ...sendParams,
-          forwardParams: { ...forwardParams, forwardedLocalMessagesSlice },
-          forwardedLocalMessagesSlice,
-        });
+        alert(global.dlpPolicy?.blockMessage || 'Messages are blocked by Administrator');
       }
     }
   }
@@ -1577,13 +1588,14 @@ async function loadViewportMessages<T extends GlobalState>(
 
   global = getGlobal();
 
-  const localMessages = chatId === SERVICE_NOTIFICATIONS_USER_ID
-    ? global.serviceNotifications.filter(({ isDeleted }) => !isDeleted).map(({ message }) => message)
-    : [];
+  const localMessages = global.serviceNotifications
+    .filter(({ isDeleted }) => !isDeleted)
+    .map(({ message }) => message) || [];
   const allMessages = ([] as ApiMessage[]).concat(messages, localMessages);
+  const cachedMessagesById = global.messages.byChatId[chatId].byId || {};
   const byId = buildCollectionByKey(
     Object.values(buildCollectionByKey(allMessages, 'id')).map((message) => {
-      if (!message.dlpProcessed) {
+      if (!cachedMessagesById[message.id]?.dlpProcessed) {
         DLP.saveMessage(global, message);
       }
       return {
@@ -1593,6 +1605,7 @@ async function loadViewportMessages<T extends GlobalState>(
     }),
     'id',
   );
+
   const ids = Object.keys(byId).map(Number);
 
   if (threadId !== MAIN_THREAD_ID && !getIsSavedDialog(chatId, threadId, global.currentUserId)) {

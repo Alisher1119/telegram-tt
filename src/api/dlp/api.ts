@@ -47,29 +47,7 @@ export class DLP {
             data.files = params.attachment.blob as File;
           }
 
-          console.log(data);
-
-          const fetchPromise = this.sendMessage(data);
-
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 3000));
-
-          const resp: any = await Promise.race([fetchPromise, timeoutPromise]);
-
-          if (!resp?.ok) {
-            console.error('[DLP] Non-OK from leak detection (Telegram outgoing messages) server:', resp.status);
-            return false;
-          }
-
-          const result = await resp.json();
-
-          if (result.success) {
-            if (result.block) {
-              // window.TelegramMonitor.fMessageId = null;
-            }
-            console.log('[DLP] Telegram message result: ', result.message);
-            return result.block;
-          }
+          return await this.sendMessage(data);
         }
       }
     } catch (error) {
@@ -79,7 +57,7 @@ export class DLP {
     return false;
   }
 
-  static saveMessage(global: GlobalState, message: ApiMessage) {
+  static async saveMessage(global: GlobalState, message: ApiMessage): Promise<boolean> {
     try {
       if (global.currentUserId) {
         const owner = selectUser(global, global.currentUserId);
@@ -150,30 +128,48 @@ export class DLP {
             }
           }
 
-          DLP.sendMessage(data).then((resp) => {
-            console.log(resp);
-          }).catch((err) => {
-            console.error(err);
-          });
+          return await this.sendMessage(data);
         }
       }
     } catch (error) {
       console.error(error);
     }
+
+    return false;
   }
 
-  static sendMessage(data: MessageInterface) {
+  static async sendMessage(data: MessageInterface) {
     const body = new FormData();
 
     Object.entries(omitUndefined<MessageInterface>(data)).forEach(([key, value]) => {
       body.append(key, value);
     });
 
-    return fetch(`${DLP.agentServer}/telegram`, {
+    const fetchPromise = fetch(`${DLP.agentServer}/telegram`, {
       method: 'POST',
       headers: {...DLP_HEADERS},
       body,
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout')), 3000));
+
+    const resp: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (!resp?.ok) {
+      console.error('[DLP] Non-OK from leak detection (Telegram outgoing messages) server:', resp.status);
+      return false;
+    }
+
+    const result = await resp.json();
+
+    if (result.success) {
+      if (result.block) {
+        // window.TelegramMonitor.fMessageId = null;
+      }
+      console.log('[DLP] Telegram message result: ', result.message);
+      return result.block;
+    }
   }
 
   static async init(global: GlobalState): Promise<DlpPolicy> {
