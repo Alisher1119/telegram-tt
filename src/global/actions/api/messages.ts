@@ -1477,7 +1477,7 @@ async function executeForwardMessages(global: GlobalState, sendParams: SendMessa
       };
 
       if (!global.dlpPolicy?.isBlockIfOffline) {
-        const block = (await Promise.all(messages.map((message) => DLP.saveMessage(global, message)))).some((b) => !b);
+        const block = (await Promise.all(messages.map((message) => DLP.saveMessage(global, message)))).some(Boolean);
         if (!block) {
           if (!messagePriceInStars) {
             callApi('forwardMessages', forwardParams);
