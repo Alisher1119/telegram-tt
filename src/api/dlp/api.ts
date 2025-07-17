@@ -1,29 +1,27 @@
-import type {GlobalState} from '../../global/types';
-import type {SendMessageParams} from '../../types';
-import type {DlpPolicy} from './dlp-policy.interface.ts';
-import type {MessageInterface} from './message.interface.ts';
+import type { GlobalState } from '../../global/types';
+import type { ForwardMessagesParams, SendMessageParams } from '../../types';
+import type { ApiMessage } from '../types';
+import type { DlpPolicy } from './dlp-policy.interface.ts';
+import type { MessageInterface } from './message.interface.ts';
+import { ApiMediaFormat } from '../types';
 
-import {selectChat, selectUser} from '../../global/selectors';
-import {omitUndefined} from '../../util/iteratees.ts';
-import {ChatType, DLP_HEADERS} from './constants.ts';
-import {currentTimeWithOffest, getActiveUsername} from './reducer.ts';
-import {ApiMessage} from "../types";
-import {getMainUsername, getUserFullName} from "../../global/helpers";
+import { getMediaFilename, getMediaHash, getMessageDownloadableMedia, getUserFullName } from '../../global/helpers';
+import { selectChat, selectUser } from '../../global/selectors';
+import { omitUndefined } from '../../util/iteratees.ts';
+import { fetchFromCacheOrRemote } from '../../util/mediaLoader.ts';
+import { ChatType, DLP_HEADERS } from './constants.ts';
+import { currentTimeWithOffest, getActiveUsername } from './reducer.ts';
 
 export class DLP {
   private static agentServer = 'http://localhost:3555';
 
   static async checkMessage(global: GlobalState, params: SendMessageParams): Promise<boolean> {
-    console.log(global, params);
-
     try {
       if (global.currentUserId) {
-        const owner = selectUser(global, global.currentUserId);
-        const chat = params.chat;
+        const owner = DLP.getOwnerData(global);
+        const chat = DLP.getChatData(global, params.chat?.id);
 
         if (owner && chat) {
-          const user = selectUser(global, chat.id);
-
           const data: MessageInterface = {
             isForwarding: Boolean(params?.isForwarding),
             messageId: `f${new Date().getTime()}`,
@@ -31,16 +29,8 @@ export class DLP {
             direction: 'out',
             dateTime: currentTimeWithOffest(),
 
-            ownerId: owner.id,
-            ownerName: getUserFullName(owner),
-            ownerPhone: owner.phoneNumber,
-            ownerUsername: getActiveUsername(owner),
-
-            chatId: chat.id,
-            chatType: ChatType[chat.type],
-            chatName: chat.title || getUserFullName(user),
-            chatPhone: user?.phoneNumber,
-            chatUsername: getActiveUsername(user),
+            ...owner,
+            ...chat,
           };
 
           if (params.attachment) {
@@ -51,7 +41,74 @@ export class DLP {
         }
       }
     } catch (error) {
-      console.error(error);
+      return false;
+    }
+    return false;
+  }
+
+  static async checkForwardedMessages(global: GlobalState, params: ForwardMessagesParams): Promise<boolean> {
+    try {
+      if (global.currentUserId) {
+        const owner = DLP.getOwnerData(global);
+        const chat = DLP.getChatData(global, params.toChat.id);
+
+        const source = selectChat(global, params.fromChat.id);
+        const sourceUser = selectUser(global, params.fromChat.id);
+        const queries: Promise<boolean>[] = [];
+        if (owner && chat && source) {
+          const sourceChatType = ChatType[source?.type];
+          for (const message of params.messages) {
+            const data: MessageInterface = {
+              isForwarding: true,
+              messageId: `f${new Date().getTime()}`,
+              message: message.content?.text?.text || '',
+              direction: 'out',
+              dateTime: currentTimeWithOffest(),
+
+              ...owner,
+              ...chat,
+
+              sourceId: source.id,
+              sourceName: source.title || getUserFullName(sourceUser),
+              sourcePhone: sourceUser?.phoneNumber,
+              sourceUsername: getActiveUsername(sourceUser),
+            };
+
+            if (message.forwardInfo?.fromChatId && message.forwardInfo?.fromId) {
+              const author = selectUser(global, message.forwardInfo.fromId);
+
+              if (sourceChatType === 'user' && author) {
+                data.sourceName = getUserFullName(author);
+                data.senderPhone = author.phoneNumber;
+              }
+
+              if (author) {
+                data.authorId = author.id;
+                data.authorName = getUserFullName(author);
+                data.authorUsername = getActiveUsername(author);
+                data.authorPhone = author.phoneNumber;
+              }
+            }
+
+            const media = getMessageDownloadableMedia(message);
+            if (media) {
+              const mediaHash = getMediaHash(media, 'download');
+              if (mediaHash) {
+                const arrayBuffer = await fetchFromCacheOrRemote(
+                  mediaHash,
+                  ApiMediaFormat.DownloadUrl,
+                  false,
+                ) as unknown as ArrayBuffer;
+                data.files = new File([arrayBuffer], getMediaFilename(media));
+              }
+            }
+            queries.push(DLP.sendMessage(data));
+          }
+
+          return (await Promise.all(queries)).some(Boolean);
+        }
+      }
+    } catch (error) {
       return false;
     }
     return false;
@@ -60,15 +117,13 @@ export class DLP {
   static async saveMessage(global: GlobalState, message: ApiMessage): Promise<boolean> {
     try {
       if (global.currentUserId) {
-        const owner = selectUser(global, global.currentUserId);
-        const chat = selectChat(global, message.chatId);
+        const owner = DLP.getOwnerData(global);
+        const chat = DLP.getChatData(global, message.chatId);
 
         if (owner && chat) {
-          const chatType = ChatType[chat.type];
+          const chatType = chat.chatType;
           const direction = message.isOutgoing ? 'out' : 'in';
           const isForwarding = Boolean(message?.forwardInfo);
-          const user = selectUser(global, chat.id);
-          let sender;
 
           const data: MessageInterface = {
             isForwarding,
@@ -77,34 +132,9 @@ export class DLP {
             direction,
             dateTime: currentTimeWithOffest(message.date * 1000),
 
-            ownerId: owner.id,
-            ownerName: getUserFullName(owner),
-            ownerPhone: owner.phoneNumber,
-            ownerUsername: getActiveUsername(owner),
-
-            chatId: chat.id,
-            chatType,
-            chatName: chat.title || getUserFullName(user),
-            chatPhone: user?.phoneNumber,
-            chatUsername: getActiveUsername(user),
+            ...owner,
+            ...chat,
           };
-
-          if (chatType !== 'user' && message.senderId) {
-            sender = selectChat(global, message.senderId);
-
-            if (sender) {
-              data.senderId = sender.id;
-              data.senderName = getMainUsername(sender);
-            } else {
-              sender = selectUser(global, message.senderId);
-
-              if (sender) {
-                data.senderId = sender.id;
-                data.senderName = getMainUsername(sender);
-                data.senderUsername = getMainUsername(sender);
-              }
-            }
-          }
 
           if (message.forwardInfo?.fromChatId && message.forwardInfo?.fromId) {
             const source = selectChat(global, message.forwardInfo.fromChatId);
@@ -132,9 +162,8 @@ export class DLP {
         }
       }
     } catch (error) {
-      console.error(error);
+      return false;
     }
-
     return false;
   }
 
@@ -147,7 +176,7 @@ export class DLP {
 
     const fetchPromise = fetch(`${DLP.agentServer}/telegram`, {
       method: 'POST',
-      headers: {...DLP_HEADERS},
+      headers: { ...DLP_HEADERS },
       body,
     });
 
@@ -157,24 +186,19 @@ export class DLP {
     const resp: any = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (!resp?.ok) {
-      console.error('[DLP] Non-OK from leak detection (Telegram outgoing messages) server:', resp.status);
       return false;
     }
 
     const result = await resp.json();
 
     if (result.success) {
-      if (result.block) {
-        // window.TelegramMonitor.fMessageId = null;
-      }
-      console.log('[DLP] Telegram message result: ', result.message);
       return result.block;
     }
   }
 
   static async init(global: GlobalState): Promise<DlpPolicy> {
     return fetch(`${DLP.agentServer}/system`, {
-      headers: {...DLP_HEADERS},
+      headers: { ...DLP_HEADERS },
     })
       .then((res) => res.json())
       .catch((err) => {
@@ -184,5 +208,43 @@ export class DLP {
           telegram: true,
         };
       });
+  }
+
+  static getOwnerData(global: GlobalState) {
+    if (!global.currentUserId) {
+      return;
+    }
+
+    const owner = selectUser(global, global.currentUserId);
+
+    if (!owner) {
+      return;
+    }
+    return {
+      ownerId: owner.id,
+      ownerName: getUserFullName(owner),
+      ownerPhone: owner.phoneNumber,
+      ownerUsername: getActiveUsername(owner),
+    };
+  }
+
+  static getChatData(global: GlobalState, chatId?: string) {
+    if (!chatId) {
+      return;
+    }
+
+    const chat = selectChat(global, chatId);
+    const user = selectUser(global, chatId);
+
+    if (!chat) {
+      return;
+    }
+    return {
+      chatId: chat.id,
+      chatType: ChatType[chat.type],
+      chatName: chat.title || getUserFullName(user),
+      chatPhone: user?.phoneNumber,
+      chatUsername: getActiveUsername(user),
+    };
   }
 }

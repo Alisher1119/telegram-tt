@@ -7,9 +7,9 @@ import {
 } from '../global/index';
 import { INITIAL_GLOBAL_STATE } from '../global/initialState';
 import { updatePasscodeSettings } from '../global/reducers';
+import { DLP } from '../api/dlp/api.ts';
 import { cloneDeep } from './iteratees';
 import { clearStoredSession } from './sessions';
-import {DLP} from "../api/dlp/api.ts";
 
 export async function initGlobal(force: boolean = false, prevGlobal?: GlobalState) {
   prevGlobal = prevGlobal || getGlobal();

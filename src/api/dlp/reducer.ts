@@ -1,6 +1,6 @@
 import type { GlobalState } from '../../global/types';
+import type { ApiUser } from '../types';
 import type { DlpPolicy } from './dlp-policy.interface.ts';
-import type {ApiUser} from "../types";
 
 export function currentTimeWithOffest(date: number | Date = new Date()): string {
   date = new Date(date);

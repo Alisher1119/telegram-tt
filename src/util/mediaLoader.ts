@@ -128,7 +128,7 @@ function getDownloadUrl(url: string) {
   return base.href;
 }
 
-async function fetchFromCacheOrRemote(
+export async function fetchFromCacheOrRemote(
   url: string, mediaFormat: ApiMediaFormat, isHtmlAllowed: boolean, retryNumber = 0,
 ): Promise<string> {
   if (!MEDIA_CACHE_DISABLED) {

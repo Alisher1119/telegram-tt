@@ -1,3 +1,4 @@
+import type { DlpPolicy } from '../../api/dlp/dlp-policy.interface.ts';
 import type {
   ApiAppConfig,
   ApiAttachBot,
@@ -69,7 +70,6 @@ import type {
 import type { RegularLangFnParameters } from '../../util/localization';
 import type { SharedState } from './sharedState';
 import type { TabState } from './tabState';
-import {DlpPolicy} from "../../api/dlp/dlp-policy.interface.ts";
 
 export type GlobalState = {
   cacheVersion: number;

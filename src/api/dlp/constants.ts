@@ -1,5 +1,5 @@
-import {ApiChat} from "../types";
-import {MessageInterface} from "./message.interface.ts";
+import type { ApiChat } from '../types';
+import type { MessageInterface } from './message.interface.ts';
 
 export const CONTENT_TYPE_JSON = 'application/json';
 export const CONTENT_TYPE_MULTIPART = 'multipart/form-data';

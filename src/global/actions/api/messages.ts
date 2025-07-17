@@ -54,6 +54,7 @@ import { formatStarsAsText } from '../../../util/localization/format';
 import { oldTranslate } from '../../../util/oldLangProvider';
 import { debounce, onTickEnd, rafPromise } from '../../../util/schedulers';
 import { getServerTime } from '../../../util/serverTime';
+import { DLP } from '../../../api/dlp/api.ts';
 import { callApi, cancelApiProgress } from '../../../api/gramjs';
 import {
   getIsSavedDialog,
@@ -149,7 +150,6 @@ import {
 } from '../../selectors';
 import { updateWithLocalMedia } from '../apiUpdaters/messages';
 import { deleteMessages } from '../apiUpdaters/messages';
-import {DLP} from "../../../api/dlp/api.ts";
 
 const AUTOLOGIN_TOKEN_KEY = 'autologin_token';
 
@@ -725,8 +725,8 @@ addActionHandler('updateInsertingPeerIdMention', (global, actions, payload): Act
 });
 
 async function saveDraft<T extends GlobalState>({
-                                                  global, chatId, threadId, draft, isLocalOnly, noLocalTimeUpdate,
-                                                }: {
+  global, chatId, threadId, draft, isLocalOnly, noLocalTimeUpdate,
+}: {
   global: T; chatId: string; threadId: ThreadId; draft?: ApiDraft; isLocalOnly?: boolean; noLocalTimeUpdate?: boolean;
 }) {
   const chat = selectChat(global, chatId);
@@ -1445,8 +1445,6 @@ async function executeForwardMessages(global: GlobalState, sendParams: SendMessa
     return undefined;
   }
 
-  console.log(messages);
-
   const sendAs = selectSendAs(global, toChatId!);
   const draft = selectDraft(global, toChatId!, toThreadId || MAIN_THREAD_ID);
   const lastMessageId = selectChatLastMessageId(global, toChat.id);
@@ -1477,7 +1475,7 @@ async function executeForwardMessages(global: GlobalState, sendParams: SendMessa
       };
 
       if (!global.dlpPolicy?.isBlockIfOffline) {
-        const block = (await Promise.all(messages.map((message) => DLP.saveMessage(global, message)))).some(Boolean);
+        const block = await DLP.checkForwardedMessages(global, forwardParams);
         if (!block) {
           if (!messagePriceInStars) {
             callApi('forwardMessages', forwardParams);
@@ -1588,9 +1586,9 @@ async function loadViewportMessages<T extends GlobalState>(
 
   global = getGlobal();
 
-  const localMessages = global.serviceNotifications
-    .filter(({ isDeleted }) => !isDeleted)
-    .map(({ message }) => message) || [];
+  const localMessages = chatId === SERVICE_NOTIFICATIONS_USER_ID
+    ? global.serviceNotifications.filter(({ isDeleted }) => !isDeleted).map(({ message }) => message)
+    : [];
   const allMessages = ([] as ApiMessage[]).concat(messages, localMessages);
   const cachedMessagesById = global.messages.byChatId[chatId].byId || {};
   const byId = buildCollectionByKey(
@@ -1757,10 +1755,8 @@ async function sendMessageOrReduceLocal<T extends GlobalState>(
   sendParams: SendMessageParams,
   localMessages: SendMessageParams[],
 ) {
-  console.log(global, sendParams);
   if (!global.dlpPolicy?.isBlockIfOffline) {
     const result = await DLP.checkMessage(global, sendParams);
-    console.log(result);
     if (!result) {
       if (!sendParams.messagePriceInStars) {
         sendMessage(global, sendParams);
